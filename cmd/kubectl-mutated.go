@@ -34,6 +34,9 @@ func main() {
 	pflag.CommandLine.AddGoFlagSet(&fs)
 	cflags := genericclioptions.NewConfigFlags(true)
 	cflags.AddFlags(pflag.CommandLine)
+	rflags := (&genericclioptions.ResourceBuilderFlags{}).
+		WithAllNamespaces(false)
+	rflags.AddFlags(pflag.CommandLine)
 	pflag.Parse()
 
 	dc, err := cflags.ToDiscoveryClient()
@@ -41,12 +44,27 @@ func main() {
 		klog.Fatalf("cannot get discovery client: %s", err)
 	}
 
+	// namespace may come from kubeconfig, not just cli flags
+	// this is normally hidden under ResourceBuilderFlags.ToBuilder
+	// but that prevents further builder config
+	ns, _, err := cflags.ToRawKubeConfigLoader().Namespace()
+	if err != nil {
+		klog.Fatalf("cannot get namespace: %s", err)
+	}
+
 	w := printers.GetNewTabWriter(os.Stdout)
 	defer w.Flush()
+	if *rflags.AllNamespaces {
+		fmt.Fprint(w, "NAMESPACE\t")
+	}
 	fmt.Fprintln(w, "NAME\tMANAGERS")
 
-	// TODO namespaced
-	resources, err := dc.ServerPreferredResources()
+	var resources []*metav1.APIResourceList
+	if *rflags.AllNamespaces {
+		resources, err = dc.ServerPreferredResources()
+	} else {
+		resources, err = dc.ServerPreferredNamespacedResources()
+	}
 	if err != nil {
 		klog.Fatalf("cannot perform discovery: %s", err)
 	}
@@ -70,6 +88,9 @@ func main() {
 			v := resource.NewBuilder(cflags).
 				Unstructured().
 				SelectAllParam(true).
+				NamespaceParam(ns).
+				DefaultNamespace().
+				AllNamespaces(*rflags.AllNamespaces).
 				RequestChunksOf(512).
 				// TODO don't on other output formats
 				TransformRequests(func(req *rest.Request) {
@@ -105,6 +126,14 @@ func main() {
 						}
 					}
 					if len(managers) > 0 {
+						if *rflags.AllNamespaces {
+							if r.Namespaced {
+								fmt.Fprint(w, i.GetNamespace())
+								fmt.Fprint(w, "\t")
+							} else {
+								fmt.Fprint(w, "<none>\t")
+							}
+						}
 						fmt.Fprintf(w, "%s\t%s\n", formatNameColumn(&i, gvk), strings.Join(managers, ","))
 					}
 				}
