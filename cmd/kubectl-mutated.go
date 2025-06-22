@@ -10,21 +10,21 @@ import (
 
 	"github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/metadata"
 	"k8s.io/klog/v2"
 )
 
 // like k8s.io/cli-runtime/pkg/printers.printRows
-func formatNameColumn(o *unstructured.Unstructured) string {
+// cli-runtime printers assume single kind for whole table, but ours may vary
+func formatNameColumn(o metav1.Object, gvk schema.GroupVersionKind) string {
 	return fmt.Sprintf(
 		"%s/%s",
-		strings.ToLower(o.GroupVersionKind().GroupKind().String()),
+		strings.ToLower(gvk.GroupKind().String()),
 		o.GetName(),
 	)
 }
@@ -45,7 +45,8 @@ func main() {
 	if err != nil {
 		klog.Fatalf("cannot get RESTConfig: %s", err)
 	}
-	c, err := dynamic.NewForConfig(config)
+	// TODO switch to dynamic/unstructured on other output formats
+	c, err := metadata.NewForConfig(config)
 	if err != nil {
 		klog.Fatalf("cannot get RESTClient: %s", err)
 	}
@@ -71,8 +72,8 @@ func main() {
 			}
 
 			klog.V(1).Infof("fetching %s %s", rlist.GroupVersion, r.Name)
-			// TODO PartialObjectMetadata
 			rc := c.Resource(gv.WithResource(r.Name))
+			gvk := schema.GroupVersionKind{Group: r.Group, Version: r.Version, Kind: r.Kind}
 			err := resource.FollowContinue(
 				&metav1.ListOptions{Limit: 512}, // TODO
 				func(o metav1.ListOptions) (runtime.Object, error) {
@@ -87,7 +88,7 @@ func main() {
 							}
 						}
 						if len(managers) > 0 {
-							fmt.Fprintf(w, "%s\t%s\n", formatNameColumn(&i), strings.Join(managers, ","))
+							fmt.Fprintf(w, "%s\t%s\n", formatNameColumn(&i, gvk), strings.Join(managers, ","))
 						}
 					}
 					return l, err
