@@ -5,29 +5,18 @@ import (
 	"fmt"
 	"os"
 	"slices"
-	"strings"
 
 	"github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/klog/v2"
 
 	"github.com/xdavidwu/kubectl-mutated/internal/metadata"
+	"github.com/xdavidwu/kubectl-mutated/internal/printers"
 )
-
-// like k8s.io/cli-runtime/pkg/printers.printRows
-// cli-runtime printers assume single kind for whole table, but ours may vary
-func formatNameColumn(o metav1.Object, gvk schema.GroupVersionKind) string {
-	return fmt.Sprintf(
-		"%s/%s",
-		strings.ToLower(gvk.GroupKind().String()),
-		o.GetName(),
-	)
-}
 
 func must(op string, err error) {
 	if err != nil {
@@ -55,12 +44,8 @@ func main() {
 	ns, _, err := cflags.ToRawKubeConfigLoader().Namespace()
 	must("read config", err)
 
-	w := printers.GetNewTabWriter(os.Stdout)
-	defer w.Flush()
-	if *rflags.AllNamespaces {
-		fmt.Fprint(w, "NAMESPACE\t")
-	}
-	fmt.Fprintln(w, "NAME\tMANAGERS")
+	p, err := printers.NewTablePrinter(os.Stdout, *rflags.AllNamespaces)
+	defer p.Flush()
 
 	var resources []*metav1.APIResourceList
 	if *rflags.AllNamespaces {
@@ -117,24 +102,15 @@ func main() {
 				if !ok {
 					return fmt.Errorf("unexpected type")
 				}
-				managers := []string{}
+				shouldPrint := false
 				for _, mf := range o.GetManagedFields() {
 					if metadata.IsManualManager(mf.Manager) {
-						managers = append(managers, mf.Manager)
-						// TODO find a way to show fieldsV1?
-						klog.V(2).Infof("%s %s %s managed by %s: %v", rlist.GroupVersion, gvr.Resource, o.GetName(), mf.Manager, mf.FieldsV1)
+						shouldPrint = true
+						break
 					}
 				}
-				if len(managers) > 0 {
-					if *rflags.AllNamespaces {
-						if r.Namespaced {
-							fmt.Fprint(w, o.GetNamespace())
-							fmt.Fprint(w, "\t")
-						} else {
-							fmt.Fprint(w, "<none>\t")
-						}
-					}
-					fmt.Fprintf(w, "%s\t%s\n", formatNameColumn(o, gvk), strings.Join(managers, ","))
+				if shouldPrint {
+					return p.PrintObject(i.Object, gvk)
 				}
 				return nil
 			})
