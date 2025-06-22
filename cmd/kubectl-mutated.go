@@ -93,27 +93,13 @@ func main() {
 				Local().
 				Do()
 			must("build visitor", err)
-			err = v.Visit(func(i *resource.Info, e error) error {
-				if e != nil {
-					return e
-				}
-
-				o, ok := i.Object.(*metav1.PartialObjectMetadata)
-				if !ok {
-					return fmt.Errorf("unexpected type")
-				}
-				shouldPrint := false
-				for _, mf := range o.GetManagedFields() {
-					if metadata.IsManualManager(mf.Manager) {
-						shouldPrint = true
-						break
+			err = resource.NewFilteredVisitor(v, metadata.HasManuallyManagedFields).
+				Visit(func(i *resource.Info, e error) error {
+					if e != nil {
+						return e
 					}
-				}
-				if shouldPrint {
 					return p.PrintObject(i.Object, gvk)
-				}
-				return nil
-			})
+				})
 			if err != nil {
 				klog.Warningf("cannot list %s %s: %s", rlist.GroupVersion, gvr.Resource, err)
 			}
