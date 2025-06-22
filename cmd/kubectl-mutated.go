@@ -48,7 +48,7 @@ func main() {
 
 	w := printers.GetNewTabWriter(os.Stdout)
 	defer w.Flush()
-	fmt.Fprintln(w, "APIVERSION\tKIND\tNAME\tMANAGER")
+	fmt.Fprintln(w, "APIVERSION\tKIND\tNAME\tMANAGERS")
 
 	for _, rlist := range resources {
 		gv, err := schema.ParseGroupVersion(rlist.GroupVersion)
@@ -68,13 +68,16 @@ func main() {
 				func(o metav1.ListOptions) (runtime.Object, error) {
 					l, err := rc.List(context.TODO(), o)
 					for _, i := range l.Items {
+						managers := []string{}
 						for _, mf := range i.GetManagedFields() {
 							if strings.HasPrefix(mf.Manager, "kubectl") {
-								// TODO find a way to show fieldsV1
-								// TODO merge managers
-								fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", rlist.GroupVersion, r.Kind, i.GetName(), mf.Manager)
+								managers = append(managers, mf.Manager)
+								// TODO find a way to show fieldsV1?
 								klog.V(2).Infof("%s %s %s managed by %s: %v", rlist.GroupVersion, r.Name, i.GetName(), mf.Manager, mf.FieldsV1)
 							}
+						}
+						if len(managers) > 0 {
+							fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", rlist.GroupVersion, r.Kind, i.GetName(), strings.Join(managers, ","))
 						}
 					}
 					return l, err
