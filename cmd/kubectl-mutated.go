@@ -102,6 +102,11 @@ func main() {
 				// resource.version.group: pod.v1. works but pod.v1 does not
 				// not gvr.String()
 				ResourceTypes(fmt.Sprintf("%s.%s.%s", gvr.Resource, gvr.Version, gvr.Group)).
+				Flatten().
+				// for disabling mapper for Flatten(),
+				// avoid attempt on PartialObjectMetadata,
+				// still perform lists
+				Local().
 				Do()
 			err = v.Err()
 			if err != nil {
@@ -112,30 +117,28 @@ func main() {
 					return e
 				}
 
-				l, ok := i.Object.(*unstructured.UnstructuredList)
+				o, ok := i.Object.(*unstructured.Unstructured)
 				if !ok {
 					return fmt.Errorf("unexpected type")
 				}
-				for _, i := range l.Items {
-					managers := []string{}
-					for _, mf := range i.GetManagedFields() {
-						if strings.HasPrefix(mf.Manager, "kubectl") {
-							managers = append(managers, mf.Manager)
-							// TODO find a way to show fieldsV1?
-							klog.V(2).Infof("%s %s %s managed by %s: %v", rlist.GroupVersion, gvr.Resource, i.GetName(), mf.Manager, mf.FieldsV1)
+				managers := []string{}
+				for _, mf := range o.GetManagedFields() {
+					if strings.HasPrefix(mf.Manager, "kubectl") {
+						managers = append(managers, mf.Manager)
+						// TODO find a way to show fieldsV1?
+						klog.V(2).Infof("%s %s %s managed by %s: %v", rlist.GroupVersion, gvr.Resource, o.GetName(), mf.Manager, mf.FieldsV1)
+					}
+				}
+				if len(managers) > 0 {
+					if *rflags.AllNamespaces {
+						if r.Namespaced {
+							fmt.Fprint(w, o.GetNamespace())
+							fmt.Fprint(w, "\t")
+						} else {
+							fmt.Fprint(w, "<none>\t")
 						}
 					}
-					if len(managers) > 0 {
-						if *rflags.AllNamespaces {
-							if r.Namespaced {
-								fmt.Fprint(w, i.GetNamespace())
-								fmt.Fprint(w, "\t")
-							} else {
-								fmt.Fprint(w, "<none>\t")
-							}
-						}
-						fmt.Fprintf(w, "%s\t%s\n", formatNameColumn(&i, gvk), strings.Join(managers, ","))
-					}
+					fmt.Fprintf(w, "%s\t%s\n", formatNameColumn(o, gvk), strings.Join(managers, ","))
 				}
 				return nil
 			})
