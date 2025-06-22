@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
@@ -69,6 +69,9 @@ func main() {
 	}
 	must("perform discovery", err)
 
+	scheme := runtime.NewScheme()
+	must("build metav1 scheme", metav1.AddMetaToScheme(scheme))
+
 	for _, rlist := range resources {
 		gv, err := schema.ParseGroupVersion(rlist.GroupVersion)
 		must("parse GroupVersion", err)
@@ -84,7 +87,7 @@ func main() {
 
 			// XXX QPS doesn't seem to work across builders?
 			v := resource.NewBuilder(cflags).
-				Unstructured().
+				WithScheme(scheme, metav1.SchemeGroupVersion).
 				SelectAllParam(true).
 				NamespaceParam(ns).
 				DefaultNamespace().
@@ -92,9 +95,8 @@ func main() {
 				RequestChunksOf(512).
 				// TODO don't on other output formats
 				TransformRequests(func(req *rest.Request) {
-					// XXX protobuf seems not to work with builder
 					// TODO handle stuff without PartialObjectMetadataList support? (aggregated apis?)
-					req.SetHeader("Accept", "application/json;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1")
+					req.SetHeader("Accept", "application/vnd.kubernetes.protobuf;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1")
 				}).
 				// builder uses schema.Parse{Resource,Kind}Arg
 				// resource.version.group: pod.v1. works but pod.v1 does not
@@ -112,7 +114,7 @@ func main() {
 					return e
 				}
 
-				o, ok := i.Object.(*unstructured.Unstructured)
+				o, ok := i.Object.(*metav1.PartialObjectMetadata)
 				if !ok {
 					return fmt.Errorf("unexpected type")
 				}
