@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -18,6 +19,15 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/klog/v2"
 )
+
+// like k8s.io/cli-runtime/pkg/printers.printRows
+func formatNameColumn(o *unstructured.Unstructured) string {
+	return fmt.Sprintf(
+		"%s/%s",
+		strings.ToLower(o.GroupVersionKind().GroupKind().String()),
+		o.GetName(),
+	)
+}
 
 func main() {
 	var fs flag.FlagSet
@@ -48,7 +58,7 @@ func main() {
 
 	w := printers.GetNewTabWriter(os.Stdout)
 	defer w.Flush()
-	fmt.Fprintln(w, "APIVERSION\tKIND\tNAME\tMANAGERS")
+	fmt.Fprintln(w, "NAME\tMANAGERS")
 
 	for _, rlist := range resources {
 		gv, err := schema.ParseGroupVersion(rlist.GroupVersion)
@@ -77,7 +87,7 @@ func main() {
 							}
 						}
 						if len(managers) > 0 {
-							fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", rlist.GroupVersion, r.Kind, i.GetName(), strings.Join(managers, ","))
+							fmt.Fprintf(w, "%s\t%s\n", formatNameColumn(&i), strings.Join(managers, ","))
 						}
 					}
 					return l, err
