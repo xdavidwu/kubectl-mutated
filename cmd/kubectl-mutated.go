@@ -14,8 +14,9 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
+
+	"github.com/xdavidwu/kubectl-mutated/internal/metadata"
 )
 
 // like k8s.io/cli-runtime/pkg/printers.printRows
@@ -94,10 +95,8 @@ func main() {
 				AllNamespaces(*rflags.AllNamespaces).
 				RequestChunksOf(512).
 				// TODO don't on other output formats
-				TransformRequests(func(req *rest.Request) {
-					// TODO handle stuff without PartialObjectMetadataList support? (aggregated apis?)
-					req.SetHeader("Accept", "application/vnd.kubernetes.protobuf;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1")
-				}).
+				// TODO handle stuff without PartialObjectMetadataList support? (aggregated apis?)
+				TransformRequests(metadata.ToPartialObjectMetadataList).
 				// builder uses schema.Parse{Resource,Kind}Arg
 				// resource.version.group: pod.v1. works but pod.v1 does not
 				// not gvr.String()
@@ -120,7 +119,7 @@ func main() {
 				}
 				managers := []string{}
 				for _, mf := range o.GetManagedFields() {
-					if strings.HasPrefix(mf.Manager, "kubectl") {
+					if metadata.IsManualManager(mf.Manager) {
 						managers = append(managers, mf.Manager)
 						// TODO find a way to show fieldsV1?
 						klog.V(2).Infof("%s %s %s managed by %s: %v", rlist.GroupVersion, gvr.Resource, o.GetName(), mf.Manager, mf.FieldsV1)
