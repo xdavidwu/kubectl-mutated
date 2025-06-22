@@ -28,6 +28,12 @@ func formatNameColumn(o metav1.Object, gvk schema.GroupVersionKind) string {
 	)
 }
 
+func must(op string, err error) {
+	if err != nil {
+		klog.Fatalf("cannot %s: %s", op, err)
+	}
+}
+
 func main() {
 	var fs flag.FlagSet
 	klog.InitFlags(&fs)
@@ -40,17 +46,13 @@ func main() {
 	pflag.Parse()
 
 	dc, err := cflags.ToDiscoveryClient()
-	if err != nil {
-		klog.Fatalf("cannot get discovery client: %s", err)
-	}
+	must("get discovery client", err)
 
 	// namespace may come from kubeconfig, not just cli flags
 	// this is normally hidden under ResourceBuilderFlags.ToBuilder
 	// but that prevents further builder config
 	ns, _, err := cflags.ToRawKubeConfigLoader().Namespace()
-	if err != nil {
-		klog.Fatalf("cannot get namespace: %s", err)
-	}
+	must("read config", err)
 
 	w := printers.GetNewTabWriter(os.Stdout)
 	defer w.Flush()
@@ -65,15 +67,11 @@ func main() {
 	} else {
 		resources, err = dc.ServerPreferredNamespacedResources()
 	}
-	if err != nil {
-		klog.Fatalf("cannot perform discovery: %s", err)
-	}
+	must("perform discovery", err)
 
 	for _, rlist := range resources {
 		gv, err := schema.ParseGroupVersion(rlist.GroupVersion)
-		if err != nil {
-			klog.Fatalf("cannot parse GroupVersion: %s", err)
-		}
+		must("parse GroupVersion", err)
 		for _, r := range rlist.APIResources {
 			if !slices.Contains(r.Verbs, "list") {
 				continue
@@ -108,10 +106,7 @@ func main() {
 				// still perform lists
 				Local().
 				Do()
-			err = v.Err()
-			if err != nil {
-				klog.Fatalf("cannot build visitor: %s", err)
-			}
+			must("build visitor", err)
 			err = v.Visit(func(i *resource.Info, e error) error {
 				if e != nil {
 					return e
