@@ -45,13 +45,14 @@ var (
 )
 
 func init() {
-	pflag := mutatedCmd.PersistentFlags()
+	pflag := mutatedCmd.Flags()
 
 	var fs flag.FlagSet
 	klog.InitFlags(&fs)
 	pflag.AddGoFlagSet(&fs)
 	cflags.AddFlags(pflag)
 	rflags.AddFlags(pflag)
+	pflag.SortFlags = false
 
 	must(
 		"register completions",
