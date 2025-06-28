@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"slices"
 
 	"github.com/spf13/cobra"
@@ -46,6 +47,11 @@ func init() {
 		"register completions",
 		completion.RegisterConfigFlagsCompletion(mutatedCmd, cflags),
 	)
+
+	b, ok := debug.ReadBuildInfo()
+	if ok {
+		mutatedCmd.Version = b.Main.Version
+	}
 }
 
 func must(op string, err error) {
