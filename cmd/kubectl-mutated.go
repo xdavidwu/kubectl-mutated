@@ -26,7 +26,8 @@ var (
 		Annotations: map[string]string{
 			cobra.CommandDisplayNameAnnotation: "kubectl mutated",
 		},
-		Run: mutated,
+		PreRunE: cobra.NoArgs,
+		Run:     mutated,
 	}
 
 	cflags = genericclioptions.NewConfigFlags(true)
