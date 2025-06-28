@@ -6,7 +6,7 @@ import (
 	"os"
 	"slices"
 
-	"github.com/spf13/pflag"
+	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -18,23 +18,34 @@ import (
 	"github.com/xdavidwu/kubectl-mutated/internal/printers"
 )
 
+var (
+	mutatedCmd = &cobra.Command{
+		Use: "kubectl mutated",
+		Run: mutated,
+	}
+
+	cflags = genericclioptions.NewConfigFlags(true)
+	rflags = (&genericclioptions.ResourceBuilderFlags{}).
+		WithAllNamespaces(false)
+)
+
+func init() {
+	pflag := mutatedCmd.PersistentFlags()
+
+	var fs flag.FlagSet
+	klog.InitFlags(&fs)
+	pflag.AddGoFlagSet(&fs)
+	cflags.AddFlags(pflag)
+	rflags.AddFlags(pflag)
+}
+
 func must(op string, err error) {
 	if err != nil {
 		klog.Fatalf("cannot %s: %s", op, err)
 	}
 }
 
-func main() {
-	var fs flag.FlagSet
-	klog.InitFlags(&fs)
-	pflag.CommandLine.AddGoFlagSet(&fs)
-	cflags := genericclioptions.NewConfigFlags(true)
-	cflags.AddFlags(pflag.CommandLine)
-	rflags := (&genericclioptions.ResourceBuilderFlags{}).
-		WithAllNamespaces(false)
-	rflags.AddFlags(pflag.CommandLine)
-	pflag.Parse()
-
+func mutated(_ *cobra.Command, _ []string) {
 	dc, err := cflags.ToDiscoveryClient()
 	must("get discovery client", err)
 
