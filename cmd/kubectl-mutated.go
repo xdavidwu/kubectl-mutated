@@ -14,6 +14,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/klog/v2"
 
+	"github.com/xdavidwu/kubectl-mutated/internal/completion"
 	"github.com/xdavidwu/kubectl-mutated/internal/metadata"
 	"github.com/xdavidwu/kubectl-mutated/internal/printers"
 )
@@ -37,6 +38,11 @@ func init() {
 	pflag.AddGoFlagSet(&fs)
 	cflags.AddFlags(pflag)
 	rflags.AddFlags(pflag)
+
+	must(
+		"register completions",
+		completion.RegisterConfigFlagsCompletion(mutatedCmd, cflags),
+	)
 }
 
 func must(op string, err error) {
