@@ -22,7 +22,16 @@ import (
 
 var (
 	mutatedCmd = &cobra.Command{
-		Use: "kubectl-mutated",
+		Use:  "kubectl-mutated",
+		Long: "Show what resources have been mutated by a field manager that might be operated manually, like kubectl",
+		Example: `  # List such resources under current namespace
+  kubectl mutated
+
+  # List such resources under namespace "my-space"
+  kubectl mutated -n my-space
+
+  # List such resources of all types under any namespaces, including cluster-scoped resources
+  kubectl mutated --all-namespaces`,
 		Annotations: map[string]string{
 			cobra.CommandDisplayNameAnnotation: "kubectl mutated",
 		},
