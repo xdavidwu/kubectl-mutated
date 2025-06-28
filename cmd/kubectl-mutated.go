@@ -21,7 +21,10 @@ import (
 
 var (
 	mutatedCmd = &cobra.Command{
-		Use: "kubectl mutated",
+		Use: "kubectl-mutated",
+		Annotations: map[string]string{
+			cobra.CommandDisplayNameAnnotation: "kubectl mutated",
+		},
 		Run: mutated,
 	}
 
