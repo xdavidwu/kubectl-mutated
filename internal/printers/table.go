@@ -3,6 +3,8 @@ package printers
 import (
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/liggitt/tabwriter"
@@ -51,12 +53,15 @@ func (t *TablePrinter) PrintObject(r runtime.Object, gvk schema.GroupVersionKind
 		return fmt.Errorf("unexpected type")
 	}
 
-	managers := []string{}
+	m := map[string]bool{}
 	for _, mf := range o.GetManagedFields() {
 		if metadata.IsManualManager(mf.Manager) {
-			managers = append(managers, mf.Manager)
+			m[mf.Manager] = true
 		}
 	}
+	managers := slices.Collect(maps.Keys(m))
+	slices.Sort(managers)
+
 	// TODO find a way to show fieldsV1?
 	if t.withNamespace {
 		ns := o.GetNamespace()
