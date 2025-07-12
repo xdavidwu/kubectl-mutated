@@ -13,5 +13,6 @@ func IsManualManager(m string) bool {
 		m == "helm" ||
 		// helm cli storage (secrets, configmaps) implicitly via user-agent Helm/<version>
 		// (flux helm-controller users "helm-controller")
-		m == "Helm"
+		m == "Helm" ||
+		m == "Sparkles"
 }
