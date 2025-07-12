@@ -55,7 +55,7 @@ func (t *TablePrinter) PrintObject(r runtime.Object, gvk schema.GroupVersionKind
 
 	m := map[string]bool{}
 	for _, mf := range o.GetManagedFields() {
-		if metadata.IsManualManager(mf.Manager) {
+		if metadata.IsManualManager(mf) {
 			m[mf.Manager] = true
 		}
 	}

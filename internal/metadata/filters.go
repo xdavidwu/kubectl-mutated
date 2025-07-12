@@ -19,8 +19,6 @@ func HasManuallyManagedFields(i *resource.Info, err error) (bool, error) {
 
 	return slices.ContainsFunc(
 		o.GetManagedFields(),
-		func(mf metav1.ManagedFieldsEntry) bool {
-			return IsManualManager(mf.Manager)
-		},
+		IsManualManager,
 	), nil
 }
