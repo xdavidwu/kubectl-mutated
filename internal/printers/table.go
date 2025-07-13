@@ -12,9 +12,20 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	crprinters "k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/cli-runtime/pkg/resource"
 
 	"github.com/xdavidwu/kubectl-mutated/internal/metadata"
 )
+
+var (
+	metav1Scheme = runtime.NewScheme()
+)
+
+func init() {
+	if err := metav1.AddMetaToScheme(metav1Scheme); err != nil {
+		panic(fmt.Errorf("cannot build metav1 scheme: %s", err))
+	}
+}
 
 // like k8s.io/cli-runtime/pkg/printers.printRows
 // cli-runtime printers assume single kind for whole table, but ours may vary
@@ -44,6 +55,16 @@ func NewTablePrinter(o io.Writer, withNamespace bool) (*TablePrinter, error) {
 	}
 
 	return &TablePrinter{w: w, withNamespace: withNamespace}, nil
+}
+
+func (TablePrinter) ConfigureBuilder(r *resource.Builder) *resource.Builder {
+	return r.WithScheme(metav1Scheme, metav1.SchemeGroupVersion).
+		// TODO handle stuff without PartialObjectMetadataList support? (aggregated apis?)
+		TransformRequests(metadata.ToPartialObjectMetadataList).
+		// for disabling mapper for Flatten(),
+		// avoid attempt on PartialObjectMetadata,
+		// still perform lists
+		Local()
 }
 
 func (t *TablePrinter) PrintObject(r runtime.Object, gvk schema.GroupVersionKind) error {

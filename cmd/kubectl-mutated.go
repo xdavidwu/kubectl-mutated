@@ -109,25 +109,17 @@ func mutated(_ *cobra.Command, _ []string) {
 			gvk := gv.WithKind(r.Kind)
 
 			// XXX QPS doesn't seem to work across builders?
-			v := resource.NewBuilder(cflags).
-				WithScheme(scheme, metav1.SchemeGroupVersion).
+			v := p.ConfigureBuilder(resource.NewBuilder(cflags)).
 				SelectAllParam(true).
 				NamespaceParam(ns).
 				DefaultNamespace().
 				AllNamespaces(*rflags.AllNamespaces).
 				RequestChunksOf(512).
-				// TODO don't on other output formats
-				// TODO handle stuff without PartialObjectMetadataList support? (aggregated apis?)
-				TransformRequests(metadata.ToPartialObjectMetadataList).
 				// builder uses schema.Parse{Resource,Kind}Arg
 				// resource.version.group: pod.v1. works but pod.v1 does not
 				// not gvr.String()
 				ResourceTypes(fmt.Sprintf("%s.%s.%s", gvr.Resource, gvr.Version, gvr.Group)).
 				Flatten().
-				// for disabling mapper for Flatten(),
-				// avoid attempt on PartialObjectMetadata,
-				// still perform lists
-				Local().
 				Do()
 			must("build visitor", err)
 			err = resource.NewFilteredVisitor(v, metadata.HasManuallyManagedFields).
