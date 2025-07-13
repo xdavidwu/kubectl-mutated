@@ -46,9 +46,8 @@ func NewTablePrinter(o io.Writer, withNamespace bool) (*TablePrinter, error) {
 	return &TablePrinter{w: w, withNamespace: withNamespace}, nil
 }
 
-// expects r to be *metav1.PartialObjectMetadata about object of gvk
 func (t *TablePrinter) PrintObject(r runtime.Object, gvk schema.GroupVersionKind) error {
-	o, ok := r.(*metav1.PartialObjectMetadata)
+	o, ok := r.(metav1.Object)
 	if !ok {
 		return fmt.Errorf("unexpected type")
 	}

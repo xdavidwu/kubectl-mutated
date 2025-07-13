@@ -11,7 +11,7 @@ func HasManuallyManagedFields(i *resource.Info, err error) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	o, ok := i.Object.(*metav1.PartialObjectMetadata)
+	o, ok := i.Object.(metav1.Object)
 	if !ok {
 		return false, fmt.Errorf("unexpected type")
 	}
