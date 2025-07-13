@@ -13,3 +13,4 @@ type Printer interface {
 }
 
 var _ Printer = &TablePrinter{}
+var _ Printer = &HighlightedYAMLPrinter{}
