@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/structured-merge-diff/v4/fieldpath"
 )
 
@@ -32,6 +33,7 @@ func IsManualManager(e metav1.ManagedFieldsEntry) bool {
 		s := fieldpath.Set{}
 		err := s.FromJSON(bytes.NewBuffer(e.FieldsV1.Raw))
 		if err != nil {
+			klog.Warning("found invalid FieldsV1", "manager", e.Manager, "fieldsV1", string(e.FieldsV1.Raw))
 			return true
 		}
 
@@ -50,4 +52,41 @@ func IsManualManager(e metav1.ManagedFieldsEntry) bool {
 		// (flux helm-controller users "helm-controller")
 		e.Manager == "Helm" ||
 		e.Manager == "Sparkles"
+}
+
+// TODO perhaps a cached variant by metadata.uid?
+func FindSoleManualManagers(es []metav1.ManagedFieldsEntry) []metav1.ManagedFieldsEntry {
+	candidates := []metav1.ManagedFieldsEntry{}
+
+	systemManagedSet := &fieldpath.Set{}
+	for _, e := range es {
+		if IsManualManager(e) {
+			candidates = append(candidates, e)
+		} else {
+			s := fieldpath.Set{}
+			err := s.FromJSON(bytes.NewBuffer(e.FieldsV1.Raw))
+			if err != nil {
+				klog.Warning("found invalid FieldsV1", "manager", e.Manager, "fieldsV1", string(e.FieldsV1.Raw))
+				continue
+			}
+
+			systemManagedSet = systemManagedSet.Union(s.Leaves()).Leaves()
+		}
+	}
+
+	res := []metav1.ManagedFieldsEntry{}
+	for _, e := range candidates {
+		s := fieldpath.Set{}
+		err := s.FromJSON(bytes.NewBuffer(e.FieldsV1.Raw))
+		if err != nil {
+			klog.Warning("found invalid FieldsV1", "manager", e.Manager, "fieldsV1", string(e.FieldsV1.Raw))
+			res = append(res, e)
+			continue
+		}
+
+		if !s.Leaves().Difference(systemManagedSet).Empty() {
+			res = append(res, e)
+		}
+	}
+	return res
 }
