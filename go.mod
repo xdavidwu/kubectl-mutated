@@ -5,6 +5,7 @@ go 1.24.4
 require (
 	github.com/goccy/go-yaml v1.18.0
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de
+	github.com/mattn/go-isatty v0.0.20
 	github.com/spf13/cobra v1.9.1
 	k8s.io/apimachinery v0.33.2
 	k8s.io/cli-runtime v0.33.2

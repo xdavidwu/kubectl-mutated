@@ -3,8 +3,12 @@ package printers
 import (
 	"bytes"
 	"fmt"
+	"os"
 
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/lexer"
+	yamlprinter "github.com/goccy/go-yaml/printer"
+	"github.com/mattn/go-isatty"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -53,8 +57,15 @@ func (p *FilteredYAMLPrinter) PrintObject(r runtime.Object, gvk schema.GroupVers
 
 	// TODO wrap it with a list instead?
 	fmt.Println("---")
-	// TODO highlight on tty?
-	fmt.Print(string(b))
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		tokens := lexer.Tokenize(string(b))
+		pr := yamlprinter.Printer{}
+		pr.PrintErrorToken(tokens[0], true) // hack to set default colors
+		pr.LineNumber = false               // altered by PrintErrorToken
+		fmt.Println(pr.PrintTokens(tokens))
+	} else {
+		fmt.Print(string(b))
+	}
 	return nil
 }
 
