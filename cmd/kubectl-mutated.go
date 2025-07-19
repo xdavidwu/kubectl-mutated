@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"maps"
+	"strings"
 
 	"os"
 	"runtime/debug"
@@ -20,6 +22,11 @@ import (
 	"github.com/xdavidwu/kubectl-mutated/internal/metadata"
 	"github.com/xdavidwu/kubectl-mutated/internal/printers"
 )
+
+type printerOption struct {
+	desc string
+	get  func() (printers.Printer, error)
+}
 
 var (
 	mutatedCmd = &cobra.Command{
@@ -44,6 +51,33 @@ var (
 	rflags = (&genericclioptions.ResourceBuilderFlags{}).
 		WithAllNamespaces(false)
 	output *string
+
+	printerOptions = map[string]printerOption{
+		"hyaml": {
+			"YAML stream with mutated fields highlighted",
+			func() (printers.Printer, error) {
+				return &printers.HighlightedYAMLPrinter{}, nil
+			},
+		},
+		"fyaml": {
+			"YAML stream filtered to mutated fields",
+			func() (printers.Printer, error) {
+				return &printers.FilteredYAMLPrinter{}, nil
+			},
+		},
+		"fjson": {
+			"JSON filtered to mutated fields",
+			func() (printers.Printer, error) {
+				return printers.NewFilteredJSONPrinter()
+			},
+		},
+		"": {
+			"Table with manual managers and mutated fields count",
+			func() (printers.Printer, error) {
+				return printers.NewTablePrinter(os.Stdout, *rflags.AllNamespaces)
+			},
+		},
+	}
 )
 
 func init() {
@@ -54,25 +88,39 @@ func init() {
 	pflag.AddGoFlagSet(&fs)
 	cflags.AddFlags(pflag)
 	rflags.AddFlags(pflag)
-	output = pflag.StringP("output", "o", "", "Output format. One of: (hyaml).")
+
+	popts := make([]string, 0, len(printerOptions))
+	descs := make([]string, 0, len(printerOptions))
+	for _, k := range slices.Sorted(maps.Keys(printerOptions)) {
+		disp := k
+		if k == "" {
+			disp = "\"\""
+		}
+		popts = append(popts, disp)
+		descs = append(descs, fmt.Sprintf("%s:\t%s", disp, printerOptions[k].desc))
+	}
+	output = pflag.StringP("output", "o", "",
+		fmt.Sprintf(
+			"Output format. One of: (%s)\n%s",
+			strings.Join(popts, ", "),
+			strings.Join(descs, "\n"),
+		))
 	pflag.SortFlags = false
 
 	must(
 		"register config flags completions",
 		completion.RegisterConfigFlagsCompletion(mutatedCmd, cflags),
 	)
+
+	oc := make([]cobra.Completion, 0, len(printerOptions))
+	for k, v := range printerOptions {
+		oc = append(oc, cobra.CompletionWithDesc(k, v.desc))
+	}
 	must(
 		"register output flag completion",
 		mutatedCmd.RegisterFlagCompletionFunc(
 			"output",
-			cobra.FixedCompletions(
-				[]cobra.Completion{
-					cobra.CompletionWithDesc("hyaml", "YAML document stream with mutated fields highlighted"),
-					cobra.CompletionWithDesc("fyaml", "YAML document stream filtered to mutated fields"),
-					cobra.CompletionWithDesc("fjson", "JSON filtered to mutated fields"),
-				},
-				cobra.ShellCompDirectiveNoFileComp,
-			),
+			cobra.FixedCompletions(oc, cobra.ShellCompDirectiveNoFileComp),
 		),
 	)
 
@@ -98,19 +146,12 @@ func mutated(_ *cobra.Command, _ []string) {
 	ns, _, err := cflags.ToRawKubeConfigLoader().Namespace()
 	must("read config", err)
 
-	var p printers.Printer
-	switch *output {
-	case "":
-		p, err = printers.NewTablePrinter(os.Stdout, *rflags.AllNamespaces)
-	case "hyaml":
-		p = &printers.HighlightedYAMLPrinter{}
-	case "fyaml":
-		p = &printers.FilteredYAMLPrinter{}
-	case "fjson":
-		p, err = printers.NewFilteredJSONPrinter()
-	default:
+	opt, ok := printerOptions[*output]
+	if !ok {
 		must("set up printer", fmt.Errorf("unrecognized printer: %s", *output))
 	}
+	p, err := opt.get()
+	must("set up printer", err)
 	defer p.Flush()
 
 	var resources []*metav1.APIResourceList
