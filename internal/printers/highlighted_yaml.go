@@ -53,6 +53,14 @@ func (e UnexpectedTypeError) Error() string {
 	return fmt.Sprintf("unexpected type %s, expecting %s", e.Seen, e.Expected)
 }
 
+type NoMatchError struct {
+	Path fieldpath.PathElement
+}
+
+func (e NoMatchError) Error() string {
+	return fmt.Sprintf("no match for %s", e.Path)
+}
+
 // TODO complete with path element other than f:
 func iterate(
 	n ast.Node,
@@ -79,9 +87,10 @@ PathElementLoop:
 					if err := fnkv(kv, p); err != nil {
 						return err
 					}
-					break
+					continue PathElementLoop
 				}
 			}
+			return NoMatchError{p}
 		case p.Key != nil:
 			if n.Type() != ast.SequenceType {
 				return UnexpectedTypeError{Expected: ast.SequenceType, Seen: n.Type()}
@@ -134,7 +143,7 @@ PathElementLoop:
 				}
 				continue PathElementLoop
 			}
-			klog.Warningf("no match for %s", p)
+			return NoMatchError{p}
 		case p.Value != nil:
 			klog.Infof("value node %v", n)
 		case p.Index != nil:
