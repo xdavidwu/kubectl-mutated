@@ -12,8 +12,6 @@ import (
 	"github.com/mattn/go-isatty"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	"github.com/xdavidwu/kubectl-mutated/internal/metadata"
 )
 
 const (
@@ -25,7 +23,7 @@ var (
 )
 
 type FilteredJSONPrinter struct {
-	unstructuredPrinter
+	filteredPrinter
 	trailer string
 	first   bool
 }
@@ -64,25 +62,12 @@ func NewFilteredJSONPrinter() (*FilteredJSONPrinter, error) {
 }
 
 func (p *FilteredJSONPrinter) PrintObject(r runtime.Object, gvk schema.GroupVersionKind) error {
-	o, err := p.toUnstructured(r, gvk)
+	o, err := p.getFilteredObject(r, gvk)
 	if err != nil {
-		return fmt.Errorf("cannot convert to unstructured: %s", err)
+		return fmt.Errorf("cannot get filtered object: %s", err)
 	}
 
-	c := o.DeepCopy()
-	c.SetManagedFields(nil)
-
-	s, err := metadata.SolelyManuallyManagedSet(o.GetManagedFields())
-	if err != nil {
-		return fmt.Errorf("cannot conclude field set: %s", err)
-	}
-
-	f, err := Filter(c, s)
-	if err != nil {
-		return fmt.Errorf("cannot filter resource: %s", err)
-	}
-
-	b, err := json.MarshalIndent(f.Object, prefix, indent)
+	b, err := json.MarshalIndent(o.Object, prefix, indent)
 	if err != nil {
 		return fmt.Errorf("cannot marshal JSON: %s", err)
 	}

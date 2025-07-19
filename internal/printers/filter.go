@@ -4,8 +4,12 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/structured-merge-diff/v6/fieldpath"
 	"sigs.k8s.io/structured-merge-diff/v6/value"
+
+	"github.com/xdavidwu/kubectl-mutated/internal/metadata"
 )
 
 func filterMap(v map[string]any, s *fieldpath.Set) (map[string]any, error) {
@@ -149,4 +153,30 @@ func Filter(u *unstructured.Unstructured, s *fieldpath.Set) (*unstructured.Unstr
 		r.SetNamespace(ns)
 	}
 	return &r, nil
+}
+
+type filteredPrinter struct {
+	unstructuredPrinter
+}
+
+func (p *filteredPrinter) getFilteredObject(r runtime.Object, gvk schema.GroupVersionKind) (*unstructured.Unstructured, error) {
+	o, err := p.toUnstructured(r, gvk)
+	if err != nil {
+		return nil, fmt.Errorf("cannot convert to unstructured: %s", err)
+	}
+
+	c := o.DeepCopy()
+	c.SetManagedFields(nil)
+
+	s, err := metadata.SolelyManuallyManagedSet(o.GetManagedFields())
+	if err != nil {
+		return nil, fmt.Errorf("cannot conclude field set: %s", err)
+	}
+
+	f, err := Filter(c, s)
+	if err != nil {
+		return nil, fmt.Errorf("cannot filter resource: %s", err)
+	}
+
+	return f, nil
 }
