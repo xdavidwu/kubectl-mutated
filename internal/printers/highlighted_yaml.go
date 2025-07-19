@@ -16,6 +16,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/structured-merge-diff/v6/fieldpath"
+	"sigs.k8s.io/structured-merge-diff/v6/value"
 
 	"github.com/xdavidwu/kubectl-mutated/internal/metadata"
 )
@@ -57,7 +58,9 @@ func iterate(
 	n ast.Node,
 	ps iter.Seq[fieldpath.PathElement],
 	fnkv func(kv *ast.MappingValueNode, p fieldpath.PathElement) error,
+	fnse func(e *ast.SequenceEntryNode, p fieldpath.PathElement) error,
 ) error {
+PathElementLoop:
 	for p := range ps {
 		switch {
 		case p.FieldName != nil:
@@ -68,9 +71,10 @@ func iterate(
 
 			for _, kv := range m.Values {
 				if kv.Key.Type() != ast.StringType {
-					continue
+					return UnexpectedTypeError{Expected: ast.StringType, Seen: kv.Key.Type()}
 				}
 				sn := kv.Key.(*ast.StringNode)
+
 				if sn.Value == *p.FieldName {
 					if err := fnkv(kv, p); err != nil {
 						return err
@@ -78,6 +82,63 @@ func iterate(
 					break
 				}
 			}
+		case p.Key != nil:
+			if n.Type() != ast.SequenceType {
+				return UnexpectedTypeError{Expected: ast.SequenceType, Seen: n.Type()}
+			}
+			s := n.(*ast.SequenceNode)
+
+		MapLoop:
+			for _, e := range s.Entries {
+				if e.Value.Type() != ast.MappingType {
+					continue
+				}
+				m := e.Value.(*ast.MappingNode)
+
+			FieldLoop:
+				for _, f := range *p.Key {
+					for _, kv := range m.Values {
+						if kv.Key.Type() != ast.StringType {
+							return UnexpectedTypeError{Expected: ast.StringType, Seen: kv.Key.Type()}
+						}
+						sn := kv.Key.(*ast.StringNode)
+
+						if sn.Value == f.Name {
+							// XXX would this be too slow?
+							y, err := kv.Value.MarshalYAML()
+							if err != nil {
+								return err
+							}
+
+							j, err := yaml.YAMLToJSON(y)
+							if err != nil {
+								return err
+							}
+
+							// go through the same unmarshaller
+							v, err := value.FromJSON(j)
+							if err != nil {
+								return err
+							}
+
+							if value.Equals(v, f.Value) {
+								continue FieldLoop
+							}
+						}
+					}
+					continue MapLoop
+				}
+
+				if err := fnse(e, p); err != nil {
+					return nil
+				}
+				continue PathElementLoop
+			}
+			klog.Warningf("no match for %s", p)
+		case p.Value != nil:
+			klog.Infof("value node %v", n)
+		case p.Index != nil:
+			klog.Infof("index node %v", n)
 		}
 	}
 	return nil
@@ -91,6 +152,10 @@ func traverse(n ast.Node, s *fieldpath.Set) error {
 			highlight(kv)
 			return nil
 		},
+		func(se *ast.SequenceEntryNode, _ fieldpath.PathElement) error {
+			highlight(se)
+			return nil
+		},
 	); err != nil {
 		return err
 	}
@@ -100,6 +165,9 @@ func traverse(n ast.Node, s *fieldpath.Set) error {
 		s.Children.All(),
 		func(kv *ast.MappingValueNode, p fieldpath.PathElement) error {
 			return traverse(kv.Value, s.Children.Descend(p))
+		},
+		func(se *ast.SequenceEntryNode, p fieldpath.PathElement) error {
+			return traverse(se.Value, s.Children.Descend(p))
 		},
 	)
 }
