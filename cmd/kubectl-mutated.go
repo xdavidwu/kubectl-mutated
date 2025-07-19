@@ -49,7 +49,8 @@ var (
 
 	cflags = genericclioptions.NewConfigFlags(true)
 	rflags = (&genericclioptions.ResourceBuilderFlags{}).
-		WithAllNamespaces(false)
+		WithAllNamespaces(false).
+		WithLabelSelector("")
 	output *string
 
 	printerOptions = map[string]printerOption{
@@ -178,12 +179,17 @@ func mutated(_ *cobra.Command, _ []string) {
 			gvr := gv.WithResource(r.Name)
 			gvk := gv.WithKind(r.Kind)
 
+			all := true
+			if *rflags.LabelSelector != "" {
+				all = false
+			}
 			// XXX QPS doesn't seem to work across builders?
 			v := p.ConfigureBuilder(resource.NewBuilder(cflags), gvk).
-				SelectAllParam(true).
+				SelectAllParam(all).
 				NamespaceParam(ns).
 				DefaultNamespace().
 				AllNamespaces(*rflags.AllNamespaces).
+				LabelSelectorParam(*rflags.LabelSelector).
 				RequestChunksOf(512).
 				// builder uses schema.Parse{Resource,Kind}Arg
 				// resource.version.group: pod.v1. works but pod.v1 does not
