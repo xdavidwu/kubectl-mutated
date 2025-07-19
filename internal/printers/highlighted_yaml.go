@@ -176,7 +176,17 @@ PathElementLoop:
 			}
 			return NoMatchError{p}
 		case p.Index != nil:
-			klog.Infof("index node %v", n)
+			if n.Type() != ast.SequenceType {
+				return UnexpectedTypeError{Expected: ast.SequenceType, Seen: n.Type()}
+			}
+			s := n.(*ast.SequenceNode)
+
+			if *p.Index >= len(s.Entries) {
+				return NoMatchError{p}
+			}
+			if err := fnse(s.Entries[*p.Index], p); err != nil {
+				return nil
+			}
 		}
 	}
 	return nil
