@@ -6,7 +6,6 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/lexer"
-	yamlprinter "github.com/goccy/go-yaml/printer"
 	"github.com/mattn/go-isatty"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,10 +30,7 @@ func (p *FilteredYAMLPrinter) PrintObject(r runtime.Object, gvk schema.GroupVers
 	fmt.Println("---")
 	if isatty.IsTerminal(os.Stdout.Fd()) {
 		tokens := lexer.Tokenize(string(b))
-		pr := yamlprinter.Printer{}
-		pr.PrintErrorToken(tokens[0], true) // hack to set default colors
-		pr.LineNumber = false               // altered by PrintErrorToken
-		fmt.Println(pr.PrintTokens(tokens))
+		fmt.Println(coloringYAMLPrinter.PrintTokens(tokens))
 	} else {
 		fmt.Print(string(b))
 	}

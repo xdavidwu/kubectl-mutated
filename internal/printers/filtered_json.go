@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml/lexer"
-	yamlprinter "github.com/goccy/go-yaml/printer"
 	"github.com/goccy/go-yaml/token"
 	"github.com/mattn/go-isatty"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -49,11 +48,8 @@ func NewFilteredJSONPrinter() (*FilteredJSONPrinter, error) {
 
 	var trailer string
 	if isatty.IsTerminal(os.Stdout.Fd()) {
-		pr := yamlprinter.Printer{}
-		pr.PrintErrorToken(tokens[0], true) // hack to set default colors
-		pr.LineNumber = false               // altered by PrintErrorToken
-		fmt.Print(pr.PrintTokens(tokens[:end]))
-		trailer = indent + pr.PrintTokens(tokens[end:])
+		fmt.Print(coloringYAMLPrinter.PrintTokens(tokens[:end]))
+		trailer = indent + coloringYAMLPrinter.PrintTokens(tokens[end:])
 	} else {
 		fmt.Print(string(b)[:endStr])
 		trailer = indent + string(b)[endStr:]
@@ -79,10 +75,7 @@ func (p *FilteredJSONPrinter) PrintObject(r runtime.Object, gvk schema.GroupVers
 	// TODO wrap it with a list instead?
 	if isatty.IsTerminal(os.Stdout.Fd()) {
 		tokens := lexer.Tokenize(string(b))
-		pr := yamlprinter.Printer{}
-		pr.PrintErrorToken(tokens[0], true) // hack to set default colors
-		pr.LineNumber = false               // altered by PrintErrorToken
-		fmt.Print(pr.PrintTokens(tokens))
+		fmt.Print(coloringYAMLPrinter.PrintTokens(tokens))
 	} else {
 		fmt.Print(string(b))
 	}
