@@ -61,6 +61,27 @@ func (e NoMatchError) Error() string {
 	return fmt.Sprintf("no match for %s", e.Path)
 }
 
+func nodeEqualsValue(n ast.Node, v value.Value) (bool, error) {
+	// XXX would this be too slow?
+	y, err := n.MarshalYAML()
+	if err != nil {
+		return false, err
+	}
+
+	j, err := yaml.YAMLToJSON(y)
+	if err != nil {
+		return false, err
+	}
+
+	// go through the same unmarshaller
+	nv, err := value.FromJSON(j)
+	if err != nil {
+		return false, err
+	}
+
+	return value.Equals(nv, v), nil
+}
+
 // TODO complete with path element other than f:
 func iterate(
 	n ast.Node,
@@ -113,24 +134,12 @@ PathElementLoop:
 						sn := kv.Key.(*ast.StringNode)
 
 						if sn.Value == f.Name {
-							// XXX would this be too slow?
-							y, err := kv.Value.MarshalYAML()
+							b, err := nodeEqualsValue(kv.Value, f.Value)
 							if err != nil {
 								return err
 							}
 
-							j, err := yaml.YAMLToJSON(y)
-							if err != nil {
-								return err
-							}
-
-							// go through the same unmarshaller
-							v, err := value.FromJSON(j)
-							if err != nil {
-								return err
-							}
-
-							if value.Equals(v, f.Value) {
+							if b {
 								continue FieldLoop
 							}
 						}
@@ -145,7 +154,27 @@ PathElementLoop:
 			}
 			return NoMatchError{p}
 		case p.Value != nil:
-			klog.Infof("value node %v", n)
+			if n.Type() != ast.SequenceType {
+				return UnexpectedTypeError{Expected: ast.SequenceType, Seen: n.Type()}
+			}
+			s := n.(*ast.SequenceNode)
+
+			for _, e := range s.Entries {
+				b, err := nodeEqualsValue(e.Value, *p.Value)
+				if err != nil {
+					return err
+				}
+
+				if !b {
+					continue
+				}
+
+				if err := fnse(e, p); err != nil {
+					return nil
+				}
+				continue PathElementLoop
+			}
+			return NoMatchError{p}
 		case p.Index != nil:
 			klog.Infof("index node %v", n)
 		}
