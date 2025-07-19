@@ -1,7 +1,6 @@
 package printers
 
 import (
-	"bytes"
 	"fmt"
 	"iter"
 
@@ -240,16 +239,11 @@ func (p *HighlightedYAMLPrinter) PrintObject(r runtime.Object, gvk schema.GroupV
 	}
 	t := f.Docs[0].Body
 
-	s := &fieldpath.Set{}
-	for _, mf := range metadata.FindSoleManualManagers(o.GetManagedFields()) {
-		ms := &fieldpath.Set{}
-		err := ms.FromJSON(bytes.NewBuffer(mf.FieldsV1.Raw))
-		if err != nil {
-			return err
-		}
-		s = s.Union(ms)
+	s, err := metadata.SolelyManuallyManagedSet(o.GetManagedFields())
+	if err != nil {
+		return fmt.Errorf("cannot conclude field set: %s", err)
 	}
-	err = traverse(t, s.Leaves())
+	err = traverse(t, s)
 	if err != nil {
 		return err
 	}

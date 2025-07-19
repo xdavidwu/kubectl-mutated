@@ -1,7 +1,6 @@
 package printers
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 
@@ -13,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
-	"sigs.k8s.io/structured-merge-diff/v6/fieldpath"
 
 	"github.com/xdavidwu/kubectl-mutated/internal/metadata"
 )
@@ -35,14 +33,9 @@ func (p *FilteredYAMLPrinter) PrintObject(r runtime.Object, gvk schema.GroupVers
 	c := o.DeepCopy()
 	c.SetManagedFields(nil)
 
-	s := &fieldpath.Set{}
-	for _, mf := range metadata.FindSoleManualManagers(o.GetManagedFields()) {
-		ms := &fieldpath.Set{}
-		err := ms.FromJSON(bytes.NewBuffer(mf.FieldsV1.Raw))
-		if err != nil {
-			return err
-		}
-		s = s.Union(ms)
+	s, err := metadata.SolelyManuallyManagedSet(o.GetManagedFields())
+	if err != nil {
+		return fmt.Errorf("cannot conclude field set: %s", err)
 	}
 
 	f, err := Filter(c, s)

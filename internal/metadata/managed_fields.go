@@ -90,3 +90,16 @@ func FindSoleManualManagers(es []metav1.ManagedFieldsEntry) []metav1.ManagedFiel
 	}
 	return res
 }
+
+func SolelyManuallyManagedSet(mfs []metav1.ManagedFieldsEntry) (*fieldpath.Set, error) {
+	s := &fieldpath.Set{}
+	for _, mf := range FindSoleManualManagers(mfs) {
+		ms := &fieldpath.Set{}
+		err := ms.FromJSON(bytes.NewBuffer(mf.FieldsV1.Raw))
+		if err != nil {
+			return nil, err
+		}
+		s = s.Union(ms)
+	}
+	return s.Leaves(), nil
+}
