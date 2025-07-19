@@ -21,6 +21,9 @@ kubectl mutated -n my-space
 
 # List such resources of all types under any namespaces, including cluster-scoped resources
 kubectl mutated --all-namespaces
+
+# Output in YAML highlighting such fields
+kubectl mutated -o hyaml
 ```
 
 ## FAQs

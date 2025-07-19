@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+
 	"os"
 	"runtime/debug"
 	"slices"
@@ -42,6 +43,7 @@ var (
 	cflags = genericclioptions.NewConfigFlags(true)
 	rflags = (&genericclioptions.ResourceBuilderFlags{}).
 		WithAllNamespaces(false)
+	output *string
 )
 
 func init() {
@@ -52,11 +54,24 @@ func init() {
 	pflag.AddGoFlagSet(&fs)
 	cflags.AddFlags(pflag)
 	rflags.AddFlags(pflag)
+	output = pflag.StringP("output", "o", "", "Output format. One of: (hyaml).")
 	pflag.SortFlags = false
 
 	must(
-		"register completions",
+		"register config flags completions",
 		completion.RegisterConfigFlagsCompletion(mutatedCmd, cflags),
+	)
+	must(
+		"register output flag completion",
+		mutatedCmd.RegisterFlagCompletionFunc(
+			"output",
+			cobra.FixedCompletions(
+				[]cobra.Completion{
+					cobra.CompletionWithDesc("hyaml", "YAML document stream with mutated fields highlighted"),
+				},
+				cobra.ShellCompDirectiveNoFileComp,
+			),
+		),
 	)
 
 	b, ok := debug.ReadBuildInfo()
@@ -81,7 +96,15 @@ func mutated(_ *cobra.Command, _ []string) {
 	ns, _, err := cflags.ToRawKubeConfigLoader().Namespace()
 	must("read config", err)
 
-	p, err := printers.NewTablePrinter(os.Stdout, *rflags.AllNamespaces)
+	var p printers.Printer
+	switch *output {
+	case "":
+		p, err = printers.NewTablePrinter(os.Stdout, *rflags.AllNamespaces)
+	case "hyaml":
+		p = &printers.HighlightedYAMLPrinter{}
+	default:
+		must("set up printer", fmt.Errorf("unrecognized printer: %s", *output))
+	}
 	defer p.Flush()
 
 	var resources []*metav1.APIResourceList
