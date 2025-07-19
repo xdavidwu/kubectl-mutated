@@ -50,7 +50,7 @@ func NewTablePrinter(o io.Writer, withNamespace bool) (*TablePrinter, error) {
 			return nil, err
 		}
 	}
-	if _, err := fmt.Fprintln(w, "NAME\tMANAGERS"); err != nil {
+	if _, err := fmt.Fprintln(w, "NAME\tMANAGERS\tCOUNT"); err != nil {
 		return nil, err
 	}
 
@@ -80,6 +80,12 @@ func (t *TablePrinter) PrintObject(r runtime.Object, gvk schema.GroupVersionKind
 	managers := slices.Collect(maps.Keys(m))
 	slices.Sort(managers)
 
+	s, err := metadata.SolelyManuallyManagedSet(o.GetManagedFields())
+	if err != nil {
+		return fmt.Errorf("cannot conclude field set: %s", err)
+	}
+	c := s.Size()
+
 	// TODO find a way to show fieldsV1?
 	if t.withNamespace {
 		ns := o.GetNamespace()
@@ -93,7 +99,13 @@ func (t *TablePrinter) PrintObject(r runtime.Object, gvk schema.GroupVersionKind
 			return err
 		}
 	}
-	_, err := fmt.Fprintf(t.w, "%s\t%s\n", formatNameColumn(o, gvk), strings.Join(managers, ","))
+	_, err = fmt.Fprintf(
+		t.w,
+		"%s\t%s\t%d\n",
+		formatNameColumn(o, gvk),
+		strings.Join(managers, ","),
+		c,
+	)
 	return err
 }
 
