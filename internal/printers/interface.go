@@ -14,3 +14,5 @@ type Printer interface {
 
 var _ Printer = &TablePrinter{}
 var _ Printer = &HighlightedYAMLPrinter{}
+var _ Printer = &FilteredYAMLPrinter{}
+var _ Printer = &FilteredJSONPrinter{}

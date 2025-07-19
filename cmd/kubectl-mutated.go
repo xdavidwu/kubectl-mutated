@@ -69,6 +69,7 @@ func init() {
 				[]cobra.Completion{
 					cobra.CompletionWithDesc("hyaml", "YAML document stream with mutated fields highlighted"),
 					cobra.CompletionWithDesc("fyaml", "YAML document stream filtered to mutated fields"),
+					cobra.CompletionWithDesc("fjson", "JSON filtered to mutated fields"),
 				},
 				cobra.ShellCompDirectiveNoFileComp,
 			),
@@ -105,6 +106,8 @@ func mutated(_ *cobra.Command, _ []string) {
 		p = &printers.HighlightedYAMLPrinter{}
 	case "fyaml":
 		p = &printers.FilteredYAMLPrinter{}
+	case "fjson":
+		p, err = printers.NewFilteredJSONPrinter()
 	default:
 		must("set up printer", fmt.Errorf("unrecognized printer: %s", *output))
 	}
