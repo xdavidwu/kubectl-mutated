@@ -9,10 +9,8 @@ import (
 	"github.com/goccy/go-yaml/lexer"
 	"github.com/goccy/go-yaml/parser"
 	yamlprinter "github.com/goccy/go-yaml/printer"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/structured-merge-diff/v6/fieldpath"
 	"sigs.k8s.io/structured-merge-diff/v6/value"
 
@@ -20,11 +18,7 @@ import (
 )
 
 type HighlightedYAMLPrinter struct {
-}
-
-func (HighlightedYAMLPrinter) ConfigureBuilder(r *resource.Builder) *resource.Builder {
-	// TODO use scheme if possible, to utilize protobuf
-	return r.Unstructured()
+	unstructuredPrinter
 }
 
 type highlighter struct{}
@@ -219,9 +213,9 @@ func traverse(n ast.Node, s *fieldpath.Set) error {
 }
 
 func (p *HighlightedYAMLPrinter) PrintObject(r runtime.Object, gvk schema.GroupVersionKind) error {
-	o, ok := r.(*unstructured.Unstructured)
-	if !ok {
-		return fmt.Errorf("unexpected type")
+	o, err := p.toUnstructured(r)
+	if err != nil {
+		return fmt.Errorf("cannot convert to unstructured: %s", err)
 	}
 
 	c := o.DeepCopy()

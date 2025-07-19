@@ -7,7 +7,7 @@ import (
 )
 
 type Printer interface {
-	ConfigureBuilder(r *resource.Builder) *resource.Builder
+	ConfigureBuilder(r *resource.Builder, gvk schema.GroupVersionKind) *resource.Builder
 	PrintObject(r runtime.Object, gvk schema.GroupVersionKind) error
 	Flush() error
 }

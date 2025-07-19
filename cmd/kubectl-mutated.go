@@ -138,7 +138,7 @@ func mutated(_ *cobra.Command, _ []string) {
 			gvk := gv.WithKind(r.Kind)
 
 			// XXX QPS doesn't seem to work across builders?
-			v := p.ConfigureBuilder(resource.NewBuilder(cflags)).
+			v := p.ConfigureBuilder(resource.NewBuilder(cflags), gvk).
 				SelectAllParam(true).
 				NamespaceParam(ns).
 				DefaultNamespace().

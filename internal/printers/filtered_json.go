@@ -10,10 +10,8 @@ import (
 	yamlprinter "github.com/goccy/go-yaml/printer"
 	"github.com/goccy/go-yaml/token"
 	"github.com/mattn/go-isatty"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/cli-runtime/pkg/resource"
 
 	"github.com/xdavidwu/kubectl-mutated/internal/metadata"
 )
@@ -27,6 +25,7 @@ var (
 )
 
 type FilteredJSONPrinter struct {
+	unstructuredPrinter
 	trailer string
 	first   bool
 }
@@ -64,15 +63,10 @@ func NewFilteredJSONPrinter() (*FilteredJSONPrinter, error) {
 	return &FilteredJSONPrinter{trailer: trailer, first: true}, nil
 }
 
-func (FilteredJSONPrinter) ConfigureBuilder(r *resource.Builder) *resource.Builder {
-	// TODO use scheme if possible, to utilize protobuf
-	return r.Unstructured()
-}
-
 func (p *FilteredJSONPrinter) PrintObject(r runtime.Object, gvk schema.GroupVersionKind) error {
-	o, ok := r.(*unstructured.Unstructured)
-	if !ok {
-		return fmt.Errorf("unexpected type")
+	o, err := p.toUnstructured(r)
+	if err != nil {
+		return fmt.Errorf("cannot convert to unstructured: %s", err)
 	}
 
 	c := o.DeepCopy()

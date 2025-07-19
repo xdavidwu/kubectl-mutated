@@ -57,7 +57,7 @@ func NewTablePrinter(o io.Writer, withNamespace bool) (*TablePrinter, error) {
 	return &TablePrinter{w: w, withNamespace: withNamespace}, nil
 }
 
-func (TablePrinter) ConfigureBuilder(r *resource.Builder) *resource.Builder {
+func (TablePrinter) ConfigureBuilder(r *resource.Builder, _ schema.GroupVersionKind) *resource.Builder {
 	return r.WithScheme(metav1Scheme, metav1.SchemeGroupVersion).
 		// TODO handle stuff without PartialObjectMetadataList support? (aggregated apis?)
 		TransformRequests(metadata.ToPartialObjectMetadataList).
