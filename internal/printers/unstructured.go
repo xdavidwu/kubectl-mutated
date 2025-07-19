@@ -9,7 +9,9 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type unstructuredPrinter struct{}
+type unstructuredPrinter struct {
+	withNamespace bool
+}
 
 func (unstructuredPrinter) ConfigureBuilder(r *resource.Builder, gvk schema.GroupVersionKind) *resource.Builder {
 	// use scheme if possible, to utilize protobuf
@@ -22,17 +24,19 @@ func (unstructuredPrinter) ConfigureBuilder(r *resource.Builder, gvk schema.Grou
 	return r.Unstructured()
 }
 
-func (unstructuredPrinter) toUnstructured(o runtime.Object, gvk schema.GroupVersionKind) (*unstructured.Unstructured, error) {
+func (p unstructuredPrinter) toUnstructured(o runtime.Object, gvk schema.GroupVersionKind) (*unstructured.Unstructured, error) {
 	u, ok := o.(*unstructured.Unstructured)
-	if ok {
-		return u, nil
+	if !ok {
+		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(o)
+		if err != nil {
+			return nil, err
+		}
+		u = &unstructured.Unstructured{Object: obj}
+		u.SetGroupVersionKind(gvk)
 	}
 
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(o)
-	if err != nil {
-		return nil, err
+	if !p.withNamespace {
+		delete(u.Object["metadata"].(map[string]any), "namespace")
 	}
-	res := &unstructured.Unstructured{Object: obj}
-	res.SetGroupVersionKind(gvk)
-	return res, nil
+	return u, nil
 }

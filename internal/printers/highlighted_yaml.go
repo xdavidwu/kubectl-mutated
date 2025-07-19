@@ -21,6 +21,14 @@ type HighlightedYAMLPrinter struct {
 	unstructuredPrinter
 }
 
+func NewHighlightedYAMLPrinter(withNamespace bool) (*HighlightedYAMLPrinter, error) {
+	return &HighlightedYAMLPrinter{
+		unstructuredPrinter: unstructuredPrinter{
+			withNamespace: withNamespace,
+		},
+	}, nil
+}
+
 type highlighter struct{}
 
 func (v *highlighter) Visit(n ast.Node) ast.Visitor {

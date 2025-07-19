@@ -27,7 +27,7 @@ type FilteredJSONPrinter struct {
 	first   bool
 }
 
-func NewFilteredJSONPrinter() (*FilteredJSONPrinter, error) {
+func NewFilteredJSONPrinter(withNamespace bool) (*FilteredJSONPrinter, error) {
 	wrapper := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "List",
@@ -54,7 +54,15 @@ func NewFilteredJSONPrinter() (*FilteredJSONPrinter, error) {
 		fmt.Print(string(b)[:endStr])
 		trailer = indent + string(b)[endStr:]
 	}
-	return &FilteredJSONPrinter{trailer: trailer, first: true}, nil
+	return &FilteredJSONPrinter{
+		filteredPrinter: filteredPrinter{
+			unstructuredPrinter: unstructuredPrinter{
+				withNamespace: withNamespace,
+			},
+		},
+		trailer: trailer,
+		first:   true,
+	}, nil
 }
 
 func (p *FilteredJSONPrinter) PrintObject(r runtime.Object, gvk schema.GroupVersionKind) error {

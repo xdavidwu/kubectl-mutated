@@ -57,19 +57,19 @@ var (
 		"hyaml": {
 			"YAML stream with mutated fields highlighted",
 			func() (printers.Printer, error) {
-				return &printers.HighlightedYAMLPrinter{}, nil
+				return printers.NewHighlightedYAMLPrinter(*rflags.AllNamespaces)
 			},
 		},
 		"fyaml": {
 			"YAML stream filtered to mutated fields",
 			func() (printers.Printer, error) {
-				return &printers.FilteredYAMLPrinter{}, nil
+				return printers.NewFilteredYAMLPrinter(*rflags.AllNamespaces)
 			},
 		},
 		"fjson": {
 			"JSON filtered to mutated fields",
 			func() (printers.Printer, error) {
-				return printers.NewFilteredJSONPrinter()
+				return printers.NewFilteredJSONPrinter(*rflags.AllNamespaces)
 			},
 		},
 		"": {

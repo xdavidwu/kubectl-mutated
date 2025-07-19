@@ -15,6 +15,16 @@ type FilteredYAMLPrinter struct {
 	filteredPrinter
 }
 
+func NewFilteredYAMLPrinter(withNamespace bool) (*FilteredYAMLPrinter, error) {
+	return &FilteredYAMLPrinter{
+		filteredPrinter: filteredPrinter{
+			unstructuredPrinter: unstructuredPrinter{
+				withNamespace: withNamespace,
+			},
+		},
+	}, nil
+}
+
 func (p *FilteredYAMLPrinter) PrintObject(r runtime.Object, gvk schema.GroupVersionKind) error {
 	o, err := p.getFilteredObject(r, gvk)
 	if err != nil {
