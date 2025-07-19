@@ -3,6 +3,7 @@ package printers
 import (
 	"bytes"
 	"fmt"
+	"iter"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
@@ -42,13 +43,26 @@ func highlight(n ast.Node) {
 	ast.Walk(&highlighter{}, n)
 }
 
+type UnexpectedTypeError struct {
+	Expected ast.NodeType
+	Seen     ast.NodeType
+}
+
+func (e UnexpectedTypeError) Error() string {
+	return fmt.Sprintf("unexpected type %s, expecting %s", e.Seen, e.Expected)
+}
+
 // TODO complete with path element other than f:
-func traverse(n ast.Node, s *fieldpath.Set) error {
-	for p := range s.Members.All() {
+func iterate(
+	n ast.Node,
+	ps iter.Seq[fieldpath.PathElement],
+	fnkv func(kv *ast.MappingValueNode, p fieldpath.PathElement) error,
+) error {
+	for p := range ps {
 		switch {
 		case p.FieldName != nil:
 			if n.Type() != ast.MappingType {
-				return fmt.Errorf("unexpected type %s, expecting %s", n.Type(), ast.MappingType)
+				return UnexpectedTypeError{Expected: ast.MappingType, Seen: n.Type()}
 			}
 			m := n.(*ast.MappingNode)
 
@@ -58,28 +72,7 @@ func traverse(n ast.Node, s *fieldpath.Set) error {
 				}
 				sn := kv.Key.(*ast.StringNode)
 				if sn.Value == *p.FieldName {
-					highlight(kv)
-					break
-				}
-			}
-		}
-	}
-	for p := range s.Children.All() {
-		switch {
-		case p.FieldName != nil:
-			if n.Type() != ast.MappingType {
-				return fmt.Errorf("unexpected type %s, expecting %s", n.Type(), ast.MappingType)
-			}
-			m := n.(*ast.MappingNode)
-
-			for _, kv := range m.Values {
-				if kv.Key.Type() != ast.StringType {
-					continue
-				}
-				sn := kv.Key.(*ast.StringNode)
-				if sn.Value == *p.FieldName {
-					err := traverse(kv.Value, s.Children.Descend(p))
-					if err != nil {
+					if err := fnkv(kv, p); err != nil {
 						return err
 					}
 					break
@@ -88,6 +81,27 @@ func traverse(n ast.Node, s *fieldpath.Set) error {
 		}
 	}
 	return nil
+}
+
+func traverse(n ast.Node, s *fieldpath.Set) error {
+	if err := iterate(
+		n,
+		s.Members.All(),
+		func(kv *ast.MappingValueNode, _ fieldpath.PathElement) error {
+			highlight(kv)
+			return nil
+		},
+	); err != nil {
+		return err
+	}
+
+	return iterate(
+		n,
+		s.Children.All(),
+		func(kv *ast.MappingValueNode, p fieldpath.PathElement) error {
+			return traverse(kv.Value, s.Children.Descend(p))
+		},
+	)
 }
 
 func (p *HighlightedYAMLPrinter) PrintObject(r runtime.Object, gvk schema.GroupVersionKind) error {
