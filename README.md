@@ -24,6 +24,9 @@ kubectl mutated --all-namespaces
 
 # Output in YAML highlighting such fields
 kubectl mutated -o hyaml
+
+# Output in YAML filtered to such fields
+kubectl mutated -o fyaml
 ```
 
 ## FAQs
