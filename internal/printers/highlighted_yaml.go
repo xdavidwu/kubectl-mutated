@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/klog/v2"
 	"sigs.k8s.io/structured-merge-diff/v6/fieldpath"
 	"sigs.k8s.io/structured-merge-diff/v6/value"
 
@@ -241,17 +240,18 @@ func (p *HighlightedYAMLPrinter) PrintObject(r runtime.Object, gvk schema.GroupV
 	}
 	t := f.Docs[0].Body
 
+	s := &fieldpath.Set{}
 	for _, mf := range metadata.FindSoleManualManagers(o.GetManagedFields()) {
-		s := &fieldpath.Set{}
-		err := s.FromJSON(bytes.NewBuffer(mf.FieldsV1.Raw))
+		ms := &fieldpath.Set{}
+		err := ms.FromJSON(bytes.NewBuffer(mf.FieldsV1.Raw))
 		if err != nil {
 			return err
 		}
-
-		err = traverse(t, s.Leaves())
-		if err != nil {
-			klog.Warning("err", err)
-		}
+		s = s.Union(ms)
+	}
+	err = traverse(t, s.Leaves())
+	if err != nil {
+		return err
 	}
 
 	// TODO wrap it with a list instead?
