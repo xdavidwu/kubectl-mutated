@@ -22,7 +22,7 @@ func (unstructuredPrinter) ConfigureBuilder(r *resource.Builder, gvk schema.Grou
 	return r.Unstructured()
 }
 
-func (unstructuredPrinter) toUnstructured(o runtime.Object) (*unstructured.Unstructured, error) {
+func (unstructuredPrinter) toUnstructured(o runtime.Object, gvk schema.GroupVersionKind) (*unstructured.Unstructured, error) {
 	u, ok := o.(*unstructured.Unstructured)
 	if ok {
 		return u, nil
@@ -32,5 +32,7 @@ func (unstructuredPrinter) toUnstructured(o runtime.Object) (*unstructured.Unstr
 	if err != nil {
 		return nil, err
 	}
-	return &unstructured.Unstructured{Object: obj}, nil
+	res := &unstructured.Unstructured{Object: obj}
+	res.SetGroupVersionKind(gvk)
+	return res, nil
 }

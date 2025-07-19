@@ -213,7 +213,7 @@ func traverse(n ast.Node, s *fieldpath.Set) error {
 }
 
 func (p *HighlightedYAMLPrinter) PrintObject(r runtime.Object, gvk schema.GroupVersionKind) error {
-	o, err := p.toUnstructured(r)
+	o, err := p.toUnstructured(r, gvk)
 	if err != nil {
 		return fmt.Errorf("cannot convert to unstructured: %s", err)
 	}
