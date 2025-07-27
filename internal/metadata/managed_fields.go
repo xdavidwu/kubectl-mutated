@@ -49,7 +49,7 @@ func IsManualManager(e metav1.ManagedFieldsEntry) bool {
 		// (flux helm-controller uses "helm-controller")
 		e.Manager == "helm" ||
 		// helm cli storage (secrets, configmaps) implicitly via user-agent Helm/<version>
-		// (flux helm-controller users "helm-controller")
+		// (flux helm-controller uses "helm-controller")
 		e.Manager == "Helm" ||
 		e.Manager == "Sparkles"
 }
