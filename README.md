@@ -42,3 +42,7 @@ kubectl mutated -o fyaml
 - What if my CD scripts also use `kubectl`?
 
 Set `--field-manager` of `kubectl` to something else in your scripts.
+
+- What if I do want some resources, such as secrets, to be managed by hand?
+
+Use a different field manager like above, or set a label like `managed-by: hand` and run `kubectl mutated` with `--selector 'managed-by!=hand'`.
