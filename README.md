@@ -2,7 +2,15 @@
 
 Show what resources have been mutated by a field manager that might be operated manually, like kubectl
 
-Most GitOps or CD solutions ensure only fields specified in definitions are in sync, by the nature of "apply" operation. If you manually edit other fields that are absent in the golden definitions while debugging, they will stay and it is easy to forget to write them back into the definitions. This tool helps to find affected resources under this scenario.
+Some GitOps or CD solutions ensure only fields specified in definitions are in sync, by the nature of "apply" operation. If you manually edit other fields that are absent in the golden definitions while debugging, they will stick and it is easy to forget to write them back into the definitions.
+
+Operator pattern products may have a similar problems too. In Kubernetes, it is common to use "apply" to manage only the fields of interest, and make it possible for other entities, including humans, to manage other fields.
+
+This tool helps to find what fields of resources are managed by human, to make sure that resources are fully managed by machine, keeping them deterministic and reproducible.
+
+There are other ways to prevent manual editing of resources. `kustomize-controller` of Flux v2 [revokes kubectl managed fields ownership](https://github.com/fluxcd/kustomize-controller/pull/527) to undo changes from kubectl, even on fields not specified on GitOps. The managers-to-revoke lists can be further extended via `--override-manager`.
+
+On identifying manually managed fields, this tool is still a more comprehensive solution. It inspects all resources, not just the ones directly managed by some controllers.
 
 ## Usage
 
