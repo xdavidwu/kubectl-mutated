@@ -9,7 +9,7 @@ GO_SOURCES != find . -name '*.go'
 all: kubectl-mutated
 
 kubectl-mutated: $(GO_SOURCES)
-	go build -o $@ ./cmd/
+	go build -o $@ ./cmd/kubectl-mutated
 
 install: all
 	install -Dm755 kubectl-mutated $(DESTDIR)$(BINDIR)/kubectl-mutated
