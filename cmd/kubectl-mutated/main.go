@@ -5,6 +5,7 @@ import (
 	"path"
 
 	"github.com/spf13/cobra"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 func main() {
