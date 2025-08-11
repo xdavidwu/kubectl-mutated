@@ -197,7 +197,6 @@ func mutated(_ *cobra.Command, _ []string) {
 				ResourceTypes(fmt.Sprintf("%s.%s.%s", gvr.Resource, gvr.Version, gvr.Group)).
 				Flatten().
 				Do()
-			must("build visitor", err)
 			err = resource.NewFilteredVisitor(v, metadata.HasManuallyManagedFields).
 				Visit(func(i *resource.Info, e error) error {
 					if e != nil {
