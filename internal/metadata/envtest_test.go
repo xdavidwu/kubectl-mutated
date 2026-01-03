@@ -36,5 +36,11 @@ func TestMain(m *testing.M) {
 	}
 	slog.Info("testing with kubernetes", "version", v)
 
-	os.Exit(m.Run())
+	code := m.Run()
+
+	if err = env.Stop(); err != nil {
+		panic(err)
+	}
+
+	os.Exit(code)
 }
