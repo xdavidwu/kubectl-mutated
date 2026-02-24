@@ -48,10 +48,6 @@ func makeSelectKV(k, v string) *value.FieldList {
 	return &value.FieldList{{Name: k, Value: value.NewValueInterface(v)}}
 }
 
-func p[T any](v T) *T {
-	return &v
-}
-
 func TestSoleyManuallyManagedSetFullyManual(t *testing.T) {
 	t.Cleanup(cleanupPods)
 
@@ -136,17 +132,17 @@ func TestSoleyManuallyManagedSetCoManaged(t *testing.T) {
 
 	patch := accorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: acmetav1.TypeMetaApplyConfiguration{
-			APIVersion: p("v1"),
-			Kind:       p("Pod"),
+			APIVersion: new("v1"),
+			Kind:       new("Pod"),
 		},
 		ObjectMetaApplyConfiguration: &acmetav1.ObjectMetaApplyConfiguration{
-			Name: p("test"),
+			Name: new("test"),
 		},
 		Spec: &accorev1.PodSpecApplyConfiguration{
 			Containers: []accorev1.ContainerApplyConfiguration{
 				{
-					Name:  p("test"),
-					Image: p("alpine:latest"),
+					Name:  new("test"),
+					Image: new("alpine:latest"),
 				},
 			},
 		},
@@ -189,17 +185,17 @@ func TestSoleyManuallyManagedSetMixed(t *testing.T) {
 
 	patch := accorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: acmetav1.TypeMetaApplyConfiguration{
-			APIVersion: p("v1"),
-			Kind:       p("Pod"),
+			APIVersion: new("v1"),
+			Kind:       new("Pod"),
 		},
 		ObjectMetaApplyConfiguration: &acmetav1.ObjectMetaApplyConfiguration{
-			Name: p("test"),
+			Name: new("test"),
 		},
 		Spec: &accorev1.PodSpecApplyConfiguration{
 			Containers: []accorev1.ContainerApplyConfiguration{
 				{
-					Name:  p("test"),
-					Image: p("alpine:3.22"),
+					Name:  new("test"),
+					Image: new("alpine:3.22"),
 				},
 			},
 		},

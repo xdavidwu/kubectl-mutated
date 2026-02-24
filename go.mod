@@ -1,6 +1,6 @@
 module github.com/xdavidwu/kubectl-mutated
 
-go 1.24.4
+go 1.26.0
 
 require (
 	github.com/goccy/go-yaml v1.18.0
